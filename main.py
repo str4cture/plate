@@ -1,67 +1,64 @@
-import pyautogui
 import time
-import webbrowser
 import sys
 import requests
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 from bs4 import BeautifulSoup
 
-# open ny dmv
-webbrowser.open('https://transact3.dmv.ny.gov/platespersonalized/')
-time.sleep(5)  # wait for ny dmv to load
+chrome_driver_path = r'C:\Users\dany\Downloads\silly\chromedriver-win64\chromedriver.exe' 
 
-pyautogui.click(383, 1017)  # click on the passenger button (adjust coordinates if needed)
 
-# need to scroll down however amount
+service = Service(chrome_driver_path)
+driver = webdriver.Chrome(service=service)
 
-pyautogui.scroll(-5)
 
-# this clicks the box to enter your desired plate
-pyautogui.click(445, 992)
+driver.get('https://transact3.dmv.ny.gov/platespersonalized/')
+time.sleep(25) 
 
-# this deletes whatever was there beforehand
-pyautogui.hotkey('command', 'a')
-pyautogui.hotkey('command', 'x')
 
-def write_licenseplate(request):
+wait = WebDriverWait(driver, 10)
+passenger_button = wait.until(EC.element_to_be_clickable((By.ID, 'passenger'))) 
+passenger_button.click()
 
-    pyautogui.write(request)
-    pyautogui.press('enter')
+driver.execute_script("window.scrollBy(0, 500);")
+time.sleep(2)
 
+plate_input_box = driver.find_element(By.NAME, 'plateText') 
+plate_input_box.clear()
+
+def write_licenseplate(plate):
+    plate_input_box.send_keys(plate)
+    plate_input_box.send_keys(Keys.RETURN)
+
+# Read plates from the file
 def read_plates_from_file(file_path):
-    # read lines from the specified file
     with open(file_path, 'r') as file:
         lines = file.readlines()
     return lines
 
 def main():
-    # path to the text file
     file_path = 'plate.txt'
 
-    # read lines from the file
     lines = read_plates_from_file(file_path)
 
-    # check if there is at least one line in the file
     if lines:
-        # get the first line and strip any leading/trailing whitespace
+    
         first_plate = lines[0].strip()
-        
-        # write the license plate and press Enter
+
         write_licenseplate(first_plate)
     else:
         print("No plates found in the file.")
 
 def check_plate(plate):
     url = 'https://transact3.dmv.ny.gov/platespersonalized/'
-    #form_data = {
-      #  'plate': plate,
-       # 'passenger': 'on',  # Adjust form field names based on actual form fields
-   # }
-    
-    # Simulate form submission
+
     response = requests.get(url)
-    #soup = BeautifulSoup(response.text, 'html.parser')
-    
-    # Check if the response indicates availability
+    soup = BeautifulSoup(response.text, 'html.parser')
+
     if 'emppasplatedisplay' in response.url or 'available' in soup.text.lower():
         return True
     else:
@@ -71,7 +68,7 @@ if __name__ == "__main__":
     if sys.platform == "win32":
         import os
         os.system("danyal's plate checker for nys")
-    
+
     with open('plate.txt') as f:
         plates = [line.rstrip() for line in f]
 
@@ -84,4 +81,7 @@ if __name__ == "__main__":
                 f.write(plate + '\n')
         else:
             print(f"The plate '{plate}' is not available.")
-main()
+
+    main()
+
+    driver.quit()
